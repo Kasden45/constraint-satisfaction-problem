@@ -10,8 +10,9 @@ import random
 def count_distance(p1, p2):
     return math.dist([p1.x, p1.y], [p2.x, p2.y])
 
+
 def flatten(l_of_ls):
-    #print(l_of_ls)
+    # print(l_of_ls)
     result = []
     for l in l_of_ls:
         result.extend(l)
@@ -47,13 +48,12 @@ class Grid:
     def random_points(self, n):
         for i in range(n):
             while True:
-                x = random.randint(0,self.x)
+                x = random.randint(0, self.x)
                 y = random.randint(0, self.y)
                 new_point = Point(x, y)
                 if new_point not in self.points:
                     self.points.append(new_point)
                     break
-
 
     def generate_connections(self):
         distances: Dict[Point, List[(Point, float)]] = {}
@@ -84,7 +84,8 @@ class Grid:
 
                 exists = False
                 for connection in self.connections:
-                    if (connection[0].coords() == checked_point.coords() and connection[1].coords() == p.coords()) or (connection[0].coords() == p.coords() and connection[1].coords() == checked_point.coords()):
+                    if (connection[0].coords() == checked_point.coords() and connection[1].coords() == p.coords()) or (
+                            connection[0].coords() == p.coords() and connection[1].coords() == checked_point.coords()):
                         exists = True
                         break
                 if not exists:
@@ -125,7 +126,7 @@ class Grid:
         ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
         ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
-        plt.ylim([-1, self.y+1])
-        plt.xlim([-1, self.x+1])
+        plt.ylim([-1, self.y + 1])
+        plt.xlim([-1, self.x + 1])
         plt.draw()
         plt.waitforbuttonpress(0)

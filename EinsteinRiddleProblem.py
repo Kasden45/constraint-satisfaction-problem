@@ -41,8 +41,8 @@ class EinsteinNeighbourConstraint(Constraint[Variable, int]):
         if self.var1 not in assignment or self.var2 not in assignment:
             return True
 
-        if self.where == "LEFT":  # var1 po lewej od var2
-            return assignment[self.var1] == assignment[self.var2]+1
+        if self.where == "LEFT":  # good direction?
+            return assignment[self.var1]+1 == assignment[self.var2]
         elif self.where == "NEXT":
             return abs(assignment[self.var1] - assignment[self.var2]) == 1
 
@@ -113,10 +113,9 @@ if __name__ == "__main__":
     for name, val in var_dict.items():
         csp.add_constraint(EinsteinUniqueConstraint(val))
 
-    print("OKAY")
     solution: Optional[Dict[Variable, str]] = csp.backtracking_search(single=False)
     if len(solution) == 0:
-        print("No solution found!")
+        print("No solution!")
     else:
         for _solution in solution:
             for value in set(_solution.values()):

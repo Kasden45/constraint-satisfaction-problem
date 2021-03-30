@@ -1,4 +1,4 @@
-from typing import Generic, TypeVar, Dict, List, Optional
+from typing import Generic, TypeVar, Dict, List
 from abc import abstractmethod
 
 V = TypeVar('V')
@@ -22,12 +22,12 @@ class CSP(Generic[V, D]):
         for variable in self.variables:
             self.constraints[variable] = []
             if variable not in self.domains:
-                raise LookupError("Every variable should have a domain assigned to it.")
+                raise LookupError("Variable must have a domain!")
 
     def add_constraint(self, constraint: Constraint[V, D]):
         for variable in constraint.variables:
             if variable not in self.variables:
-                raise LookupError("Variable in constraint not in CSP")
+                raise LookupError("No variable in CSP")
             else:
                 self.constraints[variable].append(constraint)
 
@@ -58,7 +58,7 @@ class CSP(Generic[V, D]):
 
         if single:
             return None
-        if results is not None:
+        if results is not None and len(results) != 0:
             return results
         else:
             return None
