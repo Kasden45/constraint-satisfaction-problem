@@ -18,12 +18,12 @@ class GridColoringConstraint(Constraint[Point, Point]):
 
 if __name__ == "__main__":
     grid = Grid(30, 30)
-    grid.random_points(3)  # n
+    grid.random_points(11)  # n
     grid.generate_connections()
     variables: List[Point] = grid.points
     domains: Dict[Point, List[str]] = {}
     for variable in variables:
-        domains[variable] = ["red", "green", "blue"]
+        domains[variable] = ["red", "green", "blue", "yellow"]
     csp: CSP[Point, str] = CSP(variables, domains)
     for connection in grid.connections:
         csp.add_constraint(GridColoringConstraint(connection[0], connection[1]))

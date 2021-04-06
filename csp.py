@@ -13,6 +13,11 @@ class Constraint(Generic[V, D]):
     def satisfied(self, assignment: Dict[V, D]) -> bool:
         pass
 
+class Arc(Generic[V, D]):
+    def __init__(self, x: V, y: V, constraint: Constraint):
+        self.x = x
+        self.y = y
+        self.constraint = constraint
 
 class CSP(Generic[V, D]):
     def __init__(self, variables: List[V], domains: Dict[V, List[D]]):
@@ -62,3 +67,22 @@ class CSP(Generic[V, D]):
             return results
         else:
             return None
+
+    def ac3(self):
+        pass
+
+    def remove_inconsistent(self, arc: Arc, assignment):
+        removed = False
+        localassignment = assignment.copy()
+        for xv in self.domains[arc.x]:
+            localassignment[arc.x] = xv
+            for yv in self.domains[arc.y]:
+                localassignment[arc.y] = yv
+                if arc.constraint.satisfied(localassignment):
+                    break
+            self.domains[arc.x].remove(xv)
+            removed = True
+        return removed
+
+
+
