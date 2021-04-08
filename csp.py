@@ -52,18 +52,91 @@ class CSP(Generic[V, D]):
                 return False
         return True
 
-    def forward_checking(self):
-        pass
-
-    def maintain_arc_consistency(self, domains, assignment={}, lcv=False):
+    def forward_checking(self, domains, single=False, assignment={}, lcv=False, mcv=False):
         results = []
         if len(assignment) == len(self.variables):
+            if single:
+                return assignment
             return [assignment]
         unassigned: List[V] = [v for v in self.variables if v not in assignment]
+        if mcv:
+            unassigned = self.most_constrained_variable(domains, unassigned)
         first: V = unassigned[0]
 
         for value in domains[first] if not lcv else self.lcv(domains, assignment, first):
-            print(value)
+            mutable_domain = copy.deepcopy(domains)
+            local_assignment = assignment.copy()
+            # assignment.copy()
+            local_assignment[first] = value
+            self.steps += 1
+            mutable_domain[first] = [value]
+
+            if not self.check_fc(mutable_domain, local_assignment, first):
+                continue
+            else:
+                result = self.forward_checking(mutable_domain, single, local_assignment, lcv, mcv)
+                if result is not None:
+                    if single:
+                        return result
+                    results.extend(result)
+        if single:
+            return None
+        if len(results) != 0:
+            return results
+        else:
+            return None
+
+    def check_fc(self, domains,  assignment, variable):
+        # variable already assigned
+        unary = []
+        arcs_queue = []
+        for c in self.constraints[variable]:
+            if len([v for v in c.variables if v not in assignment or v == variable]) > 1:
+                arcs = list(itertools.permutations(c.variables, 2))
+                arcs = [arc for arc in arcs if arc[0] == variable and arc[1] not in assignment]
+                for arc in arcs:
+                    new_arc = Arc(arc[0], arc[1], c)
+                    arcs_queue.append(new_arc)
+            else:
+                unary.append(c)
+
+        for c in unary:
+            if not c.satisfied(assignment):
+                return False
+
+        #localassignment = copy.deepcopy(assignment)
+        localassignment = {variable: assignment[variable]}
+        # print(variable, domains[variable])
+        for neighbour in arcs_queue:
+            new_domain = copy.deepcopy(domains[neighbour.y])
+            for yv in domains[neighbour.y]:
+                localassignment[neighbour.y] = yv
+                if not neighbour.constraint.satisfied(localassignment):
+                    # print(localassignment)
+                    # print("Removing", yv, "from", neighbour.y, "becouse of", variable, domains[variable])
+                    new_domain.remove(yv)
+                    # print("REMOVE")
+            if len(new_domain) == 0:
+                return False
+            if len(new_domain) != len(domains[neighbour.y]):
+                # print(domains[neighbour.y], new_domain)
+                domains[neighbour.y] = new_domain
+
+            localassignment.pop(neighbour.y, None)
+        return True
+
+    def maintain_arc_consistency(self, domains, single=False, assignment={}, lcv=False, mcv=False):
+        results = []
+        if len(assignment) == len(self.variables):
+            if single:
+                return assignment
+            return [assignment]
+        unassigned: List[V] = [v for v in self.variables if v not in assignment]
+        if mcv:
+            unassigned = self.most_constrained_variable(domains, unassigned)
+        first: V = unassigned[0]
+
+        for value in domains[first] if not lcv else self.lcv(domains, assignment, first):
             mutable_domain = copy.deepcopy(domains)
             local_assignment = assignment.copy()
             #assignment.copy()
@@ -73,16 +146,20 @@ class CSP(Generic[V, D]):
             if not self.ac3(local_assignment, mutable_domain):
                 continue
             else:
-                result = self.maintain_arc_consistency(mutable_domain, local_assignment, lcv)
+                result = self.maintain_arc_consistency(mutable_domain, single, local_assignment, lcv, mcv)
                 if result is not None:
+                    if single:
+                        return result
                     results.extend(result)
 
+        if single:
+            return None
         if len(results) != 0:
             return results
         else:
             return None
 
-    def backtracking_search(self, assignment={}, single=False, lcv=False):
+    def backtracking_search(self, assignment={}, single=False, lcv=False, mcv=False):
         results = []
         if len(assignment) == len(self.variables):
             if single:
@@ -90,14 +167,15 @@ class CSP(Generic[V, D]):
             return [assignment]
 
         unassigned: List[V] = [v for v in self.variables if v not in assignment]
+        if mcv:
+            unassigned = self.most_constrained_variable(self.domains, unassigned)
         first: V = unassigned[0]
         for value in self.domains[first] if not lcv else self.lcv(self.domains, assignment, first):
-            print(value)
             local_assignment = assignment.copy()
             local_assignment[first] = value
             self.steps += 1
             if self.consistent(first, local_assignment):
-                result = self.backtracking_search(local_assignment, single=single, lcv=lcv)
+                result = self.backtracking_search(local_assignment, single=single, lcv=lcv, mcv=mcv)
                 if result is not None:
                     if single:
                         return result
@@ -146,7 +224,6 @@ class CSP(Generic[V, D]):
                         arcs_queue.add(other_arc)
         return True
 
-
     def remove_inconsistent(self, arc: Arc, assignment, domains):
         removed = False
         localassignment = assignment.copy()
@@ -165,19 +242,14 @@ class CSP(Generic[V, D]):
                 domains[arc.x].remove(xv)
                 removed = True
         return removed
-    #
-    # def mrv(assignment, csp):
-    #     "Minimum-remaining-values heuristic."
-    #     return argmin_random_tie(
-    #         [v for v in csp.variables if v not in assignment],
-    #         key=lambda var: num_legal_values(csp, var, assignment))
+
 
     def lcv(self, domains, assignment, variable):
         "Least-constraining-values heuristic."
         arcs_queue = []
         for c in self.constraints[variable]:
             if len([v for v in c.variables if v not in assignment]) > 1:
-                arcs = list(itertools.combinations(c.variables, 2))
+                arcs = list(itertools.permutations(c.variables, 2))
                 arcs = [arc for arc in arcs if arc[0] == variable]
                 for arc in arcs:
                     new_arc = Arc(arc[0], arc[1], c)
@@ -193,18 +265,12 @@ class CSP(Generic[V, D]):
                     localassignment[neighbour.y] = yv
                     if neighbour.constraint.satisfied(localassignment):
                         possible_values[xv] += 1
-                localassignment.pop(neighbour, None)
+                localassignment.pop(neighbour.y, None)
 
         new_possible = [k for k, v in sorted(possible_values.items(), key=lambda item: item[1], reverse=True)]
         return new_possible
 
-    def forward_checking(csp, var, value, assignment, removals):
-        "Prune neighbor values inconsistent with var=value."
-        for B in csp.neighbors[var]:
-            if B not in assignment:
-                for b in csp.curr_domains[B][:]:
-                    if not csp.constraints(var, value, B, b):
-                        csp.prune(B, b, removals)
-                if not csp.curr_domains[B]:
-                    return False
-        return True
+
+
+    def most_constrained_variable(self, domain, unassigned):
+        return sorted(unassigned, key=lambda item: len(domain[item]), reverse=False)
