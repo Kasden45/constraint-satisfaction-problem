@@ -44,6 +44,7 @@ class Grid:
         self.y = y
         self.points: List[Point] = []
         self.connections: (Point, Point) = []  # (p1, p2)
+        random.seed(100)
 
     def random_points(self, n):
         for i in range(n):
