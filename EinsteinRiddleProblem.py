@@ -30,6 +30,18 @@ class EinsteinUniqueConstraint(Constraint[Variable, int]):
         return True
 
 
+class EinsteinUniqueConstraintNew(Constraint[Variable, int]):
+    def __init__(self, variabless: List[Variable]):
+        super().__init__(variabless)
+        self.variables: List[Variable] = variabless
+
+    def satisfied(self, assignment: Dict[Variable, int]) -> bool:
+        values = []
+        for key, value in assignment.items():
+            if key.name in [var.name for var in self.variables]:
+                values.append(value)
+        return len(values) == len(set(values))
+
 class EinsteinNeighbourConstraint(Constraint[Variable, int]):
     def __init__(self, var1: Variable, var2: Variable, where: str):
         super().__init__([var1, var2])
@@ -74,11 +86,14 @@ class EinsteinHouseNumberConstraint(Constraint[Variable, int]):
 
 
 if __name__ == "__main__":
-    all_variables = {"color": ["Green", "Blue", "Yellow", "White", "Red"],
-                     "tobacco": ["Cigar", "Light", "Cig", "No filter", "Menthol"],
-                     "pet": ["Dogs", "Cats", "Horses", "Birds", "Fish"],
-                     "nationality": ["Norwegian", "Swede", "German", "Dane", "Englishman"],
-                     "drink": ["Tee", "Coffee", "Water", "Beer", "Milk"]}
+    all_variables = {
+
+                     "nationality": ["Norwegian", "Englishman",  "Dane", "German", "Swede"],
+                     "tobacco": ["Light", "Cigar", "Cig", "No filter", "Menthol"],
+                     "color": ["Red", "White", "Yellow", "Blue", "Green"],
+                     "drink": ["Tee", "Milk", "Water", "Beer", "Coffee"],
+                     "pet": ["Cats", "Birds", "Dogs", "Horses", "Fish"],
+                    }  # Order is crucial!
 
     var_dict = {}
     for key, value in all_variables.items():
@@ -110,13 +125,21 @@ if __name__ == "__main__":
     csp.add_constraint(EinsteinSameHouseConstraint(var_dict["Menthol"], var_dict["Beer"]))
     csp.add_constraint(EinsteinSameHouseConstraint(var_dict["Green"], var_dict["Coffee"]))
 
-    for name, val in var_dict.items():
-        csp.add_constraint(EinsteinUniqueConstraint(val))
+    for key in all_variables.keys():
+        group = []
+        for name, val in var_dict.items():
+            if val.category == key:
+                group.append(val)
+        csp.add_constraint(EinsteinUniqueConstraintNew(group))
 
-    solution: Optional[Dict[Variable, str]] = csp.backtracking_search(single=False)
+    # for name, val in var_dict.items():
+    #     csp.add_constraint(EinsteinUniqueConstraint(val))
+    #solution = csp.maintain_arc_consistency(domains=csp.domains, lcv=False)
+    solution: Optional[Dict[Variable, str]] = csp.backtracking_search(single=False, lcv=False)
     if len(solution) == 0:
         print("No solution!")
     else:
+        print("Steps", csp.steps)
         for _solution in solution:
             for value in set(_solution.values()):
                 print(f"{value}:", end=" ")
