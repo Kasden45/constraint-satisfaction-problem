@@ -1,6 +1,33 @@
+import copy
+
 from csp import Constraint, CSP
 from typing import Dict, List, Optional
 import pprint
+
+
+def results(solution, problem):
+    if len(solution) == 0 or solution is None:
+        print("No solution!")
+    else:
+        print("Steps", problem.steps)
+        if isinstance(solution, list):
+            for _solution in solution:
+                for value in set(_solution.values()):
+                    print(f"{value}:", end=" ")
+                    values = []
+                    for k, v in _solution.items():
+                        if v == value:
+                            values.append(k.name)
+                    print(values)
+        else:
+            for value in set(solution.values()):
+                print(f"{value}:", end=" ")
+                values = []
+                for k, v in solution.items():
+                    if v == value:
+                        values.append(k.name)
+                print(values)
+
 
 
 class Variable:
@@ -134,17 +161,55 @@ if __name__ == "__main__":
 
     # for name, val in var_dict.items():
     #     csp.add_constraint(EinsteinUniqueConstraint(val))
-    #solution = csp.maintain_arc_consistency(domains=csp.domains, lcv=False)
-    solution: Optional[Dict[Variable, str]] = csp.backtracking_search(single=False, lcv=False)
-    if len(solution) == 0:
-        print("No solution!")
-    else:
-        print("Steps", csp.steps)
-        for _solution in solution:
-            for value in set(_solution.values()):
-                print(f"{value}:", end=" ")
-                values = []
-                for k, v in _solution.items():
-                    if v == value:
-                        values.append(k.name)
-                print(values)
+    # """
+    #     WITH MCV
+    # """
+    # single = True
+    # mac_csp = copy.copy(csp)
+    # solution_mac: Optional[Dict[Variable, str]] = mac_csp.maintain_arc_consistency(domains=csp.domains, single=single, lcv=False, mcv=True)
+    # fc_csp = copy.copy(csp)
+    # solution_fc: Optional[Dict[Variable, str]] = fc_csp.forward_checking(domains=csp.domains, single=single, lcv=False, mcv=True)
+    # bt_csp = copy.copy(csp)
+    # solution_bt: Optional[Dict[Variable, str]] = bt_csp.backtracking_search(single=single, lcv=False, mcv=True)
+    #
+    # results(solution_bt, bt_csp)
+    # results(solution_fc, fc_csp)
+    # results(solution_mac, mac_csp)
+    # """
+    #     WITHOUT MCV
+    # """
+    # mac_csp = copy.copy(csp)
+    # solution_mac: Optional[Dict[Variable, str]] = mac_csp.maintain_arc_consistency(domains=csp.domains, single=single, lcv=False,
+    #                                                                                mcv=False)
+    # fc_csp = copy.copy(csp)
+    # solution_fc: Optional[Dict[Variable, str]] = fc_csp.forward_checking(domains=csp.domains, single=single, lcv=False, mcv=False)
+    # bt_csp = copy.copy(csp)
+    # solution_bt: Optional[Dict[Variable, str]] = bt_csp.backtracking_search(single=single, lcv=False, mcv=False)
+    #
+    # results(solution_bt, bt_csp)
+    # results(solution_fc, fc_csp)
+    # results(solution_mac, mac_csp)
+
+    for lcv in [True, False]:
+        for mcv in [True, False]:
+            for single in [True, False]:
+                print("mcv", mcv)
+                print("lcv", lcv)
+                print("single solution", single)
+                mac_csp = copy.copy(csp)
+                solution_mac: Optional[Dict[Variable, str]] = mac_csp.maintain_arc_consistency(domains=csp.domains,
+                                                                                               single=single, lcv=lcv,
+                                                                                               mcv=mcv)
+                print("MAC", mac_csp.steps)
+                results(solution_mac, mac_csp)
+
+                fc_csp = copy.copy(csp)
+                solution_fc: Optional[Dict[Variable, str]] = fc_csp.forward_checking(domains=csp.domains, single=single,
+                                                                                     lcv=lcv, mcv=mcv)
+                print("FC", fc_csp.steps)
+                results(solution_fc, fc_csp)
+                bt_csp = copy.copy(csp)
+                solution_bt: Optional[Dict[Variable, str]] = bt_csp.backtracking_search(single=single, lcv=lcv,
+                                                                     mcv=mcv)
+                print("BT", bt_csp.steps)
+                results(solution_bt, bt_csp)

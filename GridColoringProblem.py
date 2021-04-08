@@ -1,8 +1,24 @@
+import copy
+
 from Grid import Grid, Point
 from csp import Constraint, CSP
 from typing import Dict, List, Optional
 import pprint
 
+
+def results(solution, problem, grid, show_grid=False):
+    if solution is None or len(solution) == 0:
+        print("No solution!")
+    else:
+        print("Steps", problem.steps)
+        pprint.pprint(len(solution))
+        #pprint.pprint(solution)
+        if show_grid:
+            if isinstance(solution, list):
+                for sol in solution:
+                    grid.draw_grid(sol)
+            else:
+                grid.draw_grid(solution)
 
 class GridColoringConstraint(Constraint[Point, Point]):
     def __init__(self, point1: Point, point2: Point):
@@ -27,12 +43,62 @@ if __name__ == "__main__":
     csp: CSP[Point, str] = CSP(variables, domains)
     for connection in grid.connections:
         csp.add_constraint(GridColoringConstraint(connection[0], connection[1]))
+    # solution = csp.maintain_arc_consistency(domains=csp.domains, lcv=True, mcv=True)
+    # solution = csp.forward_checking(domains=csp.domains, lcv=True, mcv=True)
+    # solution: Optional[List[Dict[Point, str]]] = csp.backtracking_search(single=False, lcv=False, mcv=True)
+    # single = False
+    # lcv = True
+    # mcv = True
+    #
+    # mac_csp = copy.copy(csp)
+    # solution_mac: Optional[Dict[Point, str]] = mac_csp.maintain_arc_consistency(domains=csp.domains, single=single, lcv=lcv,
+    #                                                                                mcv=mcv)
+    # fc_csp = copy.copy(csp)
+    # solution_fc: Optional[Dict[Point, str]] = fc_csp.forward_checking(domains=csp.domains, single=single, lcv=lcv, mcv=mcv)
+    # bt_csp = copy.copy(csp)
+    # solution_bt: Optional[Dict[Point, str]] = bt_csp.backtracking_search(single=single, lcv=lcv, mcv=mcv)
+    #
+    # results(solution_bt, bt_csp, grid)
+    # results(solution_fc, fc_csp, grid)
+    # results(solution_mac, mac_csp, grid)
+    # """
+    #     WITHOUT MCV
+    # """
+    # mcv = False
+    # mac_csp = copy.copy(csp)
+    # solution_mac: Optional[Dict[Point, str]] = mac_csp.maintain_arc_consistency(domains=csp.domains, single=single, lcv=lcv,
+    #                                                                                mcv=mcv)
+    # fc_csp = copy.copy(csp)
+    # solution_fc: Optional[Dict[Point, str]] = fc_csp.forward_checking(domains=csp.domains, single=single, lcv=lcv, mcv=mcv)
+    # bt_csp = copy.copy(csp)
+    # solution_bt: Optional[Dict[Point, str]] = bt_csp.backtracking_search(single=single, lcv=lcv, mcv=mcv)
+    #
+    # results(solution_bt, bt_csp, grid)
+    # results(solution_fc, fc_csp, grid)
+    # results(solution_mac, mac_csp, grid)
 
-    solution: Optional[List[Dict[Point, str]]] = csp.backtracking_search(single=False)
-    if solution is None or len(solution) == 0:
-        print("No solution!")
-    else:
-        pprint.pprint(len(solution))
-        pprint.pprint(solution)
-        for sol in solution:
-            grid.draw_grid(sol)
+    for lcv in [True, False]:
+        for mcv in [True, False]:
+            for single in [True, False]:
+                print("mcv", mcv)
+                print("lcv", lcv)
+                print("single solution", single)
+                mac_csp = copy.copy(csp)
+                solution_mac: Optional[Dict[Point, str]] = mac_csp.maintain_arc_consistency(domains=csp.domains,
+                                                                                               single=single, lcv=lcv,
+                                                                                               mcv=mcv)
+                print("MAC", mac_csp.steps)
+                # results(solution_mac, mac_csp)
+
+                fc_csp = copy.copy(csp)
+                solution_fc: Optional[Dict[Point, str]] = fc_csp.forward_checking(domains=csp.domains, single=single,
+                                                                                     lcv=lcv, mcv=mcv)
+                print("FC", fc_csp.steps)
+                # results(solution_fc, fc_csp)
+                bt_csp = copy.copy(csp)
+                solution_bt: Optional[Dict[Point, str]] = bt_csp.backtracking_search(single=single, lcv=lcv,
+                                                                     mcv=mcv)
+                print("BT", bt_csp.steps)
+
+
+
