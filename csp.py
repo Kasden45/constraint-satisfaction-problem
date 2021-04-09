@@ -7,6 +7,12 @@ import copy
 V = TypeVar('V')
 D = TypeVar('D')
 
+verbose = False
+
+def print_dicts(printable_dict):
+    for k, v in printable_dict.items():
+        print(k, v)
+
 
 class Constraint(Generic[V, D]):
     def __init__(self, variables: List[V]):
@@ -59,21 +65,33 @@ class CSP(Generic[V, D]):
                 return assignment
             return [assignment]
         unassigned: List[V] = [v for v in self.variables if v not in assignment]
+        # Check mcv heuristic
         if mcv:
             unassigned = self.most_constrained_variable(domains, unassigned)
         first: V = unassigned[0]
-
+        # Values order with or without heuristic
         for value in domains[first] if not lcv else self.lcv(domains, assignment, first):
             mutable_domain = copy.deepcopy(domains)
             local_assignment = assignment.copy()
-            # assignment.copy()
+
             local_assignment[first] = value
             self.steps += 1
             mutable_domain[first] = [value]
 
             if not self.check_fc(mutable_domain, local_assignment, first):
+                # Dead end found
+                if verbose:
+                    print("Assignment:")
+                    print_dicts(local_assignment)
+                    print("causes dead end, because:")
+                    print_dicts(mutable_domain)
                 continue
             else:
+                # Continue in this direction
+                if verbose:
+                    print("Modified domains:")
+                    for k in mutable_domain.keys():
+                        print(k, ": from", domains[k], "to", mutable_domain[k])
                 result = self.forward_checking(mutable_domain, single, local_assignment, lcv, mcv)
                 if result is not None:
                     if single:
@@ -86,40 +104,47 @@ class CSP(Generic[V, D]):
         else:
             return None
 
-    def check_fc(self, domains,  assignment, variable):
+    def check_fc(self, domains, assignment, variable):
         # variable already assigned
         unary = []
-        arcs_queue = []
+        neighbours = []
         for c in self.constraints[variable]:
             if len([v for v in c.variables if v not in assignment or v == variable]) > 1:
+                # Find all arcs with unassigned neighbours
                 arcs = list(itertools.permutations(c.variables, 2))
                 arcs = [arc for arc in arcs if arc[0] == variable and arc[1] not in assignment]
                 for arc in arcs:
                     new_arc = Arc(arc[0], arc[1], c)
-                    arcs_queue.append(new_arc)
+                    neighbours.append(new_arc)
             else:
                 unary.append(c)
 
+        # Check unary constraints
         for c in unary:
             if not c.satisfied(assignment):
+                if verbose:
+                    print("Unary fail")
                 return False
-
-        #localassignment = copy.deepcopy(assignment)
+        # Check constraints with neighbours
         localassignment = {variable: assignment[variable]}
-        # print(variable, domains[variable])
-        for neighbour in arcs_queue:
+
+        for neighbour in neighbours:
             new_domain = copy.deepcopy(domains[neighbour.y])
             for yv in domains[neighbour.y]:
                 localassignment[neighbour.y] = yv
+                # Remove value from domain if it doesn't satisfy constrain
                 if not neighbour.constraint.satisfied(localassignment):
-                    # print(localassignment)
-                    # print("Removing", yv, "from", neighbour.y, "becouse of", variable, domains[variable])
                     new_domain.remove(yv)
-                    # print("REMOVE")
+
             if len(new_domain) == 0:
+                # If neighbour out of values -> dead end
+                domains[neighbour.y] = new_domain
+                if verbose:
+                    print("Binary fail")
                 return False
+
             if len(new_domain) != len(domains[neighbour.y]):
-                # print(domains[neighbour.y], new_domain)
+                # Update domain
                 domains[neighbour.y] = new_domain
 
             localassignment.pop(neighbour.y, None)
@@ -139,15 +164,27 @@ class CSP(Generic[V, D]):
         for value in domains[first] if not lcv else self.lcv(domains, assignment, first):
             mutable_domain = copy.deepcopy(domains)
             local_assignment = assignment.copy()
-            #assignment.copy()
+
             local_assignment[first] = value
             self.steps += 1
             mutable_domain[first] = [value]
             if not self.ac3(local_assignment, mutable_domain):
+                if verbose:
+                    print("Assignment:")
+                    print_dicts(local_assignment)
+                    print("causes dead end, because:")
+                    print_dicts(mutable_domain)
+                # Dead end found
                 continue
             else:
+                if verbose:
+                    print("Modified domains:")
+                    for k in mutable_domain.keys():
+                        print(k, ": from", domains[k], "to", mutable_domain[k])
+                # Continue in this direction
                 result = self.maintain_arc_consistency(mutable_domain, single, local_assignment, lcv, mcv)
                 if result is not None:
+                    # Result found
                     if single:
                         return result
                     results.extend(result)
@@ -192,6 +229,7 @@ class CSP(Generic[V, D]):
         unary = []
         all_arcs = set()
         arcs_queue = set()
+        # Find all arcs between variables from constraints
         for v, cs in self.constraints.items():
             for c in cs:
                 if len(c.variables) > 1:
@@ -202,6 +240,8 @@ class CSP(Generic[V, D]):
                         arcs_queue.add(new_arc)
                 else:
                     unary.append(c)
+
+        # Check unary constraints
         for c in unary:
             v = c.variables[0]
             possible = []
@@ -211,6 +251,7 @@ class CSP(Generic[V, D]):
                     possible.append(val)
             domains[v] = possible
             if len(domains[v]) == 0:
+                # If out of values -> dead end
                 return False
 
         while len(arcs_queue) > 0:
@@ -218,8 +259,10 @@ class CSP(Generic[V, D]):
             arcs_queue.remove(arc)
             if self.remove_inconsistent(arc, assignment, domains):
                 if len(domains[arc.x]) == 0:
+                    # If neighbour out of values -> dead end
                     return False
                 for other_arc in all_arcs:
+                    # Add back all arcs related to modified domain
                     if other_arc.x != arc.y and other_arc.y == arc.x:
                         arcs_queue.add(other_arc)
         return True
@@ -227,6 +270,7 @@ class CSP(Generic[V, D]):
     def remove_inconsistent(self, arc: Arc, assignment, domains):
         removed = False
         localassignment = assignment.copy()
+        # Check which values can be removed from domains
         for xv in domains[arc.x]:
             localassignment[arc.x] = xv
             satisfies = False
@@ -238,14 +282,12 @@ class CSP(Generic[V, D]):
                 else:
                     pass
             if not satisfies:
-
                 domains[arc.x].remove(xv)
                 removed = True
         return removed
 
-
     def lcv(self, domains, assignment, variable):
-        "Least-constraining-values heuristic."
+        # Least constraining values heuristic.
         arcs_queue = []
         for c in self.constraints[variable]:
             if len([v for v in c.variables if v not in assignment]) > 1:
@@ -255,6 +297,7 @@ class CSP(Generic[V, D]):
                     new_arc = Arc(arc[0], arc[1], c)
                     arcs_queue.append(new_arc)
 
+        # Count how many possible values for neighbours and sort DESC
         localassignment = assignment.copy()
         possible_values = {}
         for xv in domains[variable]:
@@ -269,8 +312,6 @@ class CSP(Generic[V, D]):
 
         new_possible = [k for k, v in sorted(possible_values.items(), key=lambda item: item[1], reverse=True)]
         return new_possible
-
-
 
     def most_constrained_variable(self, domain, unassigned):
         return sorted(unassigned, key=lambda item: len(domain[item]), reverse=False)
