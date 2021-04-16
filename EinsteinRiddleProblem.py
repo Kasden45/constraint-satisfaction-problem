@@ -1,4 +1,5 @@
 import copy
+import time
 
 from csp import Constraint, CSP
 from typing import Dict, List, Optional
@@ -114,9 +115,9 @@ class EinsteinHouseNumberConstraint(Constraint[Variable, int]):
 
 if __name__ == "__main__":
     all_variables = {
-
-                     "nationality": ["Norwegian", "Englishman",  "Dane", "German", "Swede"],
                      "tobacco": ["Light", "Cigar", "Cig", "No filter", "Menthol"],
+                     "nationality": ["Norwegian", "Englishman",  "Dane", "German", "Swede"],
+
                      "color": ["Red", "White", "Yellow", "Blue", "Green"],
                      "drink": ["Tee", "Milk", "Water", "Beer", "Coffee"],
                      "pet": ["Cats", "Birds", "Dogs", "Horses", "Fish"],
@@ -161,55 +162,39 @@ if __name__ == "__main__":
 
     # for name, val in var_dict.items():
     #     csp.add_constraint(EinsteinUniqueConstraint(val))
-    # """
-    #     WITH MCV
-    # """
-    # single = True
-    # mac_csp = copy.copy(csp)
-    # solution_mac: Optional[Dict[Variable, str]] = mac_csp.maintain_arc_consistency(domains=csp.domains, single=single, lcv=False, mcv=True)
-    # fc_csp = copy.copy(csp)
-    # solution_fc: Optional[Dict[Variable, str]] = fc_csp.forward_checking(domains=csp.domains, single=single, lcv=False, mcv=True)
-    # bt_csp = copy.copy(csp)
-    # solution_bt: Optional[Dict[Variable, str]] = bt_csp.backtracking_search(single=single, lcv=False, mcv=True)
-    #
-    # results(solution_bt, bt_csp)
-    # results(solution_fc, fc_csp)
-    # results(solution_mac, mac_csp)
-    # """
-    #     WITHOUT MCV
-    # """
-    # mac_csp = copy.copy(csp)
-    # solution_mac: Optional[Dict[Variable, str]] = mac_csp.maintain_arc_consistency(domains=csp.domains, single=single, lcv=False,
-    #                                                                                mcv=False)
-    # fc_csp = copy.copy(csp)
-    # solution_fc: Optional[Dict[Variable, str]] = fc_csp.forward_checking(domains=csp.domains, single=single, lcv=False, mcv=False)
-    # bt_csp = copy.copy(csp)
-    # solution_bt: Optional[Dict[Variable, str]] = bt_csp.backtracking_search(single=single, lcv=False, mcv=False)
-    #
-    # results(solution_bt, bt_csp)
-    # results(solution_fc, fc_csp)
-    # results(solution_mac, mac_csp)
 
     for lcv in [True, False]:
         for mcv in [True, False]:
             for single in [True, False]:
-                print("mcv", mcv)
-                print("lcv", lcv)
-                print("single solution", single)
+                if mcv:
+                    print("MCV", end=" ")
+                if lcv:
+                    print("LCV", end=" ")
+
+                print("SINGLE" if single else "ALL")
+
+                bt_csp = copy.copy(csp)
+                start_time = time.time()
+                solution_bt: Optional[Dict[Variable, str]] = bt_csp.backtracking_search(single=single, lcv=lcv,
+                                                                                        mcv=mcv)
+                print("Time:", (time.time() - start_time)*1000)
+                print("BT", bt_csp.steps)
+                results(solution_bt, bt_csp)
+
+
+                fc_csp = copy.copy(csp)
+                start_time = time.time()
+                solution_fc: Optional[Dict[Variable, str]] = fc_csp.forward_checking(domains=csp.domains, single=single,
+                                                                                     lcv=lcv, mcv=mcv)
+                print("Time:", (time.time() - start_time)*1000)
+                print("FC", fc_csp.steps)
+                #results(solution_fc, fc_csp)
+
                 mac_csp = copy.copy(csp)
+                start_time = time.time()
                 solution_mac: Optional[Dict[Variable, str]] = mac_csp.maintain_arc_consistency(domains=csp.domains,
                                                                                                single=single, lcv=lcv,
                                                                                                mcv=mcv)
+                print("Time:", (time.time() - start_time)*1000)
                 print("MAC", mac_csp.steps)
-                results(solution_mac, mac_csp)
-
-                fc_csp = copy.copy(csp)
-                solution_fc: Optional[Dict[Variable, str]] = fc_csp.forward_checking(domains=csp.domains, single=single,
-                                                                                     lcv=lcv, mcv=mcv)
-                print("FC", fc_csp.steps)
-                results(solution_fc, fc_csp)
-                bt_csp = copy.copy(csp)
-                solution_bt: Optional[Dict[Variable, str]] = bt_csp.backtracking_search(single=single, lcv=lcv,
-                                                                     mcv=mcv)
-                print("BT", bt_csp.steps)
-                results(solution_bt, bt_csp)
+                # results(solution_mac, mac_csp)

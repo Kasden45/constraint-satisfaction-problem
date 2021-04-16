@@ -44,7 +44,8 @@ class Grid:
         self.y = y
         self.points: List[Point] = []
         self.connections: (Point, Point) = []  # (p1, p2)
-        random.seed(100)
+        # 100
+        random.seed(102)
 
     def random_points(self, n):
         for i in range(n):
@@ -113,7 +114,7 @@ class Grid:
         lines = []
         for connection in self.connections:
             lines.append([connection[0].coords(), connection[1].coords()])
-        lc = mc.LineCollection(lines, colors=["blue"], linewidths=1)
+        lc = mc.LineCollection(lines, colors=["grey"], linewidths=1)
         for point, color in colors.items():
             circles.append(plt.Circle(point.coords(), 0.3, color=color, fill=True))
         ax.add_collection(lc)

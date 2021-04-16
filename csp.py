@@ -9,6 +9,7 @@ D = TypeVar('D')
 
 verbose = False
 
+
 def print_dicts(printable_dict):
     for k, v in printable_dict.items():
         print(k, v)
@@ -168,7 +169,7 @@ class CSP(Generic[V, D]):
             local_assignment[first] = value
             self.steps += 1
             mutable_domain[first] = [value]
-            if not self.ac3(local_assignment, mutable_domain):
+            if not self.ac3(local_assignment, mutable_domain, first):
                 if verbose:
                     print("Assignment:")
                     print_dicts(local_assignment)
@@ -225,21 +226,22 @@ class CSP(Generic[V, D]):
         else:
             return None
 
-    def ac3(self, assignment, domains):
+    def ac3(self, assignment, domains, first):
         unary = []
         all_arcs = set()
         arcs_queue = set()
         # Find all arcs between variables from constraints
-        for v, cs in self.constraints.items():
-            for c in cs:
-                if len(c.variables) > 1:
-                    arcs = list(itertools.permutations(c.variables, 2))
-                    for arc in arcs:
-                        new_arc = Arc(arc[0], arc[1], c)
-                        all_arcs.add(new_arc)
-                        arcs_queue.add(new_arc)
-                else:
-                    unary.append(c)
+        for v in self.constraints.keys():
+            if v == first or v not in assignment.keys():
+                for c in self.constraints[v]:
+                    if len(c.variables) > 1:
+                        arcs = list(itertools.permutations(c.variables, 2))
+                        for arc in arcs:
+                            new_arc = Arc(arc[0], arc[1], c)
+                            all_arcs.add(new_arc)
+                            arcs_queue.add(new_arc)
+                    else:
+                        unary.append(c)
 
         # Check unary constraints
         for c in unary:
